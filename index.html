@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Kitchen Edition | Editorial Meal Planner & Pantry</title>
+  
+  <!-- Google Fonts: Editorial Serif and Clean Sans-Serif -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Editorial Masthead (Branding & Global Header) -->
+  <header class="masthead">
+    <div class="masthead-issue">No. 1 • The Connected Kitchen</div>
+    <h1 class="masthead-logo">THE KITCHEN EDITION</h1>
+    <p class="masthead-tagline">An AI-Powered Editorial Meal Planning Suite & Pantry</p>
+    
+    <!-- Account Sync Status Indicator -->
+    <div class="sync-indicator" id="syncIndicator">
+      <span class="sync-dot"></span>
+      <span id="syncText">Loading session...</span>
+    </div>
+    
+    <!-- Global Navigation -->
+    <nav class="editorial-nav">
+      <ul>
+        <li><a href="#discover" class="nav-link active" data-target="discover">Discover</a></li>
+        <li><a href="#planner" class="nav-link" data-target="planner">Meal Planner</a></li>
+        <li><a href="#prep" class="nav-link" data-target="prep">Meal Prep</a></li>
+        <li><a href="#grocery" class="nav-link" data-target="grocery">Grocery List</a></li>
+        <li><a href="#pantry" class="nav-link" data-target="pantry">Smart Pantry</a></li>
+        <li><a href="#favorites" class="nav-link" data-target="favorites">Favorites</a></li>
+        <li><a href="#profile" class="nav-link" data-target="profile">Profile Settings</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Main Editorial Layout -->
+  <main class="editorial-container">
+    
+    <!-- SECTION 1: DISCOVER -->
+    <section id="discover" class="app-section active">
+      <div class="section-header">
+        <h2 class="editorial-title">Daily Recipe Discoveries</h2>
+        <p class="editorial-subtitle">A curated selection matching your profile, optimized to reduce pantry waste.</p>
+      </div>
+
+      <div class="search-controls-container">
+        <!-- Search bar -->
+        <div class="search-bar-wrapper">
+          <input type="text" id="recipeSearchInput" placeholder="Search recipes by name..." autocomplete="off">
+          <button id="recipeSearchBtn" class="btn-primary">Search</button>
+        </div>
+
+        <!-- Ingredient search tag area -->
+        <div class="ingredient-search-wrapper">
+          <p class="control-label">Search by ingredients on hand:</p>
+          <div class="tag-input-container">
+            <div id="ingredientTags" class="tag-container"></div>
+            <input type="text" id="ingredientSearchInput" placeholder="Add ingredient (e.g. egg, avocado) and press Enter...">
+          </div>
+          <p class="hint">Matches ingredients and highlights what is missing.</p>
+        </div>
+      </div>
+
+      <!-- Active Filters / Settings Display -->
+      <div class="active-profile-summary" id="activeProfileSummary">
+        <span>Diet: <strong>Standard</strong></span> • <span>Allergies: <strong>None</strong></span>
+      </div>
+
+      <!-- Discover Recipe Grid -->
+      <div class="editorial-grid" id="discoverGrid">
+        <!-- Recipe cards will be loaded here dynamically -->
+      </div>
+    </section>
+
+    <!-- SECTION 2: MEAL PLANNER -->
+    <section id="planner" class="app-section">
+      <div class="section-header">
+        <h2 class="editorial-title">Weekly Meal Planner</h2>
+        <p class="editorial-subtitle">Schedule your meals across the week. Drag recipes from the planner sidebar or use slot swap actions.</p>
+      </div>
+
+      <div class="planner-layout">
+        <!-- Left Sidebar: Draggable Recipe List -->
+        <aside class="planner-sidebar">
+          <h3 class="sidebar-title">Recipes Library</h3>
+          <p class="hint">Drag a card to a calendar slot or tap to select and place.</p>
+          
+          <div class="sidebar-filter-tabs">
+            <button class="filter-tab active" id="tabDiscoverRecipes">Discover</button>
+            <button class="filter-tab" id="tabFavoriteRecipes">Favorites</button>
+          </div>
+          
+          <div class="sidebar-recipe-list" id="sidebarRecipeList">
+            <!-- Draggable recipes load here -->
+          </div>
+        </aside>
+
+        <!-- Right: 7-Day Calendar Grid -->
+        <div class="calendar-grid-container">
+          <div class="calendar-grid" id="calendarGrid">
+            <!-- 7 Days loaded dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: MEAL PREP -->
+    <section id="prep" class="app-section">
+      <div class="section-header">
+        <h2 class="editorial-title">Meal Prep Consolidator</h2>
+        <p class="editorial-subtitle">Combine all planned recipes for the week into an optimized, structured kitchen session.</p>
+      </div>
+
+      <div class="prep-dashboard" id="prepDashboard">
+        <!-- Consolidated content will load here -->
+      </div>
+    </section>
+
+    <!-- SECTION 4: GROCERY LIST -->
+    <section id="grocery" class="app-section">
+      <div class="section-header">
+        <h2 class="editorial-title">Aisle-Organized Grocery List</h2>
+        <p class="editorial-subtitle">Automatically scaled to your serving sizes, subtracting ingredients already in your Smart Pantry.</p>
+      </div>
+
+      <div class="grocery-actions-header">
+        <button id="copyGroceryListBtn" class="btn-secondary">Copy to Clipboard</button>
+        <button id="emailGroceryListBtn" class="btn-secondary">Email Grocery List</button>
+      </div>
+
+      <div class="grocery-container">
+        <div class="grocery-columns" id="groceryListContainer">
+          <!-- Aisle-grouped checkable list loads here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: SMART PANTRY -->
+    <section id="pantry" class="app-section">
+      <div class="section-header">
+        <h2 class="editorial-title">Smart Pantry Inventory</h2>
+        <p class="editorial-subtitle">Keep an inventory of ingredients in your kitchen. They will deduct from your grocery list and nudge recipe recommendations.</p>
+      </div>
+
+      <div class="pantry-layout">
+        <!-- Add Pantry Item Form -->
+        <div class="pantry-form-card">
+          <h3 class="form-title">Stock Your Pantry</h3>
+          <form id="pantryForm" class="editorial-form">
+            <div class="form-group">
+              <label for="pantryItemName">Ingredient Name</label>
+              <input type="text" id="pantryItemName" placeholder="e.g. Eggs, Avocado, Spinach" required>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="pantryItemQty">Quantity</label>
+                <input type="number" id="pantryItemQty" min="0" step="any" placeholder="e.g. 4" required>
+              </div>
+              <div class="form-group">
+                <label for="pantryItemUnit">Unit</label>
+                <input type="text" id="pantryItemUnit" placeholder="e.g. pieces, cups, g" required>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn-primary full-width">Add Ingredient</button>
+          </form>
+        </div>
+
+        <!-- Pantry List View -->
+        <div class="pantry-inventory-view">
+          <h3 class="form-title">Current Inventory</h3>
+          <div class="pantry-table-wrapper">
+            <table class="pantry-table">
+              <thead>
+                <tr>
+                  <th>Ingredient</th>
+                  <th>Quantity</th>
+                  <th>Unit</th>
+                  <th class="actions-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pantryTableBody">
+                <!-- Pantry items load here dynamically -->
+              </tbody>
+            </table>
+            <div id="pantryEmptyMessage" class="empty-state">Your kitchen pantry is empty. Add ingredients on the left.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: FAVORITES -->
+    <section id="favorites" class="app-section">
+      <div class="section-header">
+        <h2 class="editorial-title">Your Favorites</h2>
+        <p class="editorial-subtitle">Recipes you bookmarked for quick planning and inspiration.</p>
+      </div>
+
+      <div class="editorial-grid" id="favoritesGrid">
+        <!-- Favorited cards load here -->
+      </div>
+      <div id="favoritesEmptyMessage" class="empty-state">No favorite recipes bookmarked yet. Click the bookmark icon on any recipe.</div>
+    </section>
+
+    <!-- SECTION 7: PROFILE SETTINGS -->
+    <section id="profile" class="app-section">
+      <div class="section-header">
+        <h2 class="editorial-title">Household Profile Settings</h2>
+        <p class="editorial-subtitle">Manage preferences, allergy safeguards, household sizes, and API integrations.</p>
+      </div>
+
+      <div class="profile-layout-grid">
+        <!-- Left: Details Form -->
+        <div class="profile-card">
+          <h3 class="form-title">Household & Diet Preferences</h3>
+          <form id="profileSettingsForm" class="editorial-form">
+            
+            <div class="form-group">
+              <label for="profileHouseholdSize">Household Size (Serving Multiplier)</label>
+              <input type="number" id="profileHouseholdSize" min="1" max="20" required>
+              <p class="form-hint">Adjusts ingredient scaling and nutrition calculations across the application.</p>
+            </div>
+
+            <div class="form-group">
+              <label>Dietary Restrictions</label>
+              <div class="checkbox-grid">
+                <label class="custom-checkbox"><input type="checkbox" name="restrictions" value="vegetarian"> Vegetarian</label>
+                <label class="custom-checkbox"><input type="checkbox" name="restrictions" value="vegan"> Vegan</label>
+                <label class="custom-checkbox"><input type="checkbox" name="restrictions" value="pescatarian"> Pescatarian</label>
+                <label class="custom-checkbox"><input type="checkbox" name="restrictions" value="keto"> Keto</label>
+                <label class="custom-checkbox"><input type="checkbox" name="restrictions" value="gluten free"> Gluten-Free</label>
+                <label class="custom-checkbox"><input type="checkbox" name="restrictions" value="dairy free"> Dairy-Free</label>
+                <label class="custom-checkbox"><input type="checkbox" name="restrictions" value="mediterranean"> Mediterranean</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="profileFilterMode">Dietary Filter Action</label>
+              <select id="profileFilterMode">
+                <option value="hide">Hide conflicting recipes entirely</option>
+                <option value="deprioritize">Show conflicting recipes at the bottom (Warning Flag)</option>
+              </select>
+            </div>
+
+            <!-- Allergy Safeguards: Treat Separately -->
+            <div class="form-group allergy-container-box">
+              <label class="danger-label">Safety Safeguards: Allergies</label>
+              <p class="danger-hint">Conflicting recipes will be completely excluded from search and recommendations.</p>
+              
+              <div class="checkbox-grid">
+                <label class="custom-checkbox danger"><input type="checkbox" name="allergies" value="peanuts"> Peanuts</label>
+                <label class="custom-checkbox danger"><input type="checkbox" name="allergies" value="tree nuts"> Tree Nuts</label>
+                <label class="custom-checkbox danger"><input type="checkbox" name="allergies" value="shellfish"> Shellfish</label>
+                <label class="custom-checkbox danger"><input type="checkbox" name="allergies" value="dairy"> Dairy</label>
+                <label class="custom-checkbox danger"><input type="checkbox" name="allergies" value="eggs"> Eggs</label>
+                <label class="custom-checkbox danger"><input type="checkbox" name="allergies" value="soy"> Soy</label>
+                <label class="custom-checkbox danger"><input type="checkbox" name="allergies" value="gluten"> Gluten</label>
+              </div>
+              
+              <div class="form-group margin-top-sm">
+                <label for="profileCustomAllergies">Additional Custom Allergies (Comma separated)</label>
+                <input type="text" id="profileCustomAllergies" placeholder="e.g. mustard, sesame, strawberry">
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary">Save Preferences</button>
+          </form>
+        </div>
+
+        <!-- Right: Developer settings & Sync Details -->
+        <div class="profile-card">
+          <h3 class="form-title">Account Sync & Spoonacular API</h3>
+          <div class="settings-sync-panel">
+            <div class="sync-account-box">
+              <h4>Editorial Account Sync</h4>
+              <p>Your weekly planner, smart pantry, and preferences are synchronized to your account.</p>
+              <div class="sync-detail-row">
+                <span>Account Status:</span>
+                <span class="badge badge-success">Simulated Sync Active</span>
+              </div>
+              <div class="sync-detail-row">
+                <span>Local Storage Backup:</span>
+                <span class="badge badge-neutral">Enabled</span>
+              </div>
+              <button id="triggerSyncBtn" class="btn-secondary full-width margin-top-sm">Force Sync Now</button>
+            </div>
+
+            <div class="api-key-box margin-top-md">
+              <h4>Spoonacular API Settings</h4>
+              <p>Add a Spoonacular API key to fetch real recipes, nutrition info, and instructions. Without a key, the app defaults to our local editorial recipe database.</p>
+              
+              <div class="form-group margin-top-sm">
+                <label for="spoonacularApiKey">Spoonacular API Key</label>
+                <input type="password" id="spoonacularApiKey" placeholder="Paste your API key here...">
+              </div>
+              <button id="saveApiKeyBtn" class="btn-secondary full-width">Save API Key</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- OVERLAY MODAL 1: MANDATORY SETUP WIZARD -->
+  <div id="setupWizardOverlay" class="modal-overlay">
+    <div class="setup-modal-card">
+      <div class="setup-header">
+        <span class="setup-issue">First Edition</span>
+        <h2>Personalize Your Kitchen</h2>
+        <p>Welcome to The Kitchen Edition. Let's personalize the entire meal planner and safety filters to your household.</p>
+      </div>
+      
+      <form id="setupWizardForm" class="editorial-form">
+        <div class="form-group">
+          <label for="setupHouseholdSize"><strong>1. Household Size</strong></label>
+          <p class="form-hint">Number of people you cook for. Used to scale all ingredient quantities and macro tallies.</p>
+          <input type="number" id="setupHouseholdSize" min="1" max="20" value="2" required>
+        </div>
+
+        <div class="form-group">
+          <label><strong>2. Allergies & Food Sensitivities</strong></label>
+          <p class="danger-hint">Safety Critical: Checked items will be completely excluded from all recommendations and search queries.</p>
+          
+          <div class="checkbox-grid setup-checkboxes">
+            <label class="custom-checkbox danger"><input type="checkbox" name="setupAllergies" value="peanuts"> Peanuts</label>
+            <label class="custom-checkbox danger"><input type="checkbox" name="setupAllergies" value="tree nuts"> Tree Nuts</label>
+            <label class="custom-checkbox danger"><input type="checkbox" name="setupAllergies" value="shellfish"> Shellfish</label>
+            <label class="custom-checkbox danger"><input type="checkbox" name="setupAllergies" value="dairy"> Dairy</label>
+            <label class="custom-checkbox danger"><input type="checkbox" name="setupAllergies" value="eggs"> Eggs</label>
+            <label class="custom-checkbox danger"><input type="checkbox" name="setupAllergies" value="soy"> Soy</label>
+            <label class="custom-checkbox danger"><input type="checkbox" name="setupAllergies" value="gluten"> Gluten</label>
+          </div>
+          
+          <div class="form-group margin-top-sm">
+            <label for="setupCustomAllergies">Other Allergies (comma separated):</label>
+            <input type="text" id="setupCustomAllergies" placeholder="e.g. sesame, honey">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label><strong>3. Dietary Restrictions</strong></label>
+          <p class="form-hint">Choose filters matching your lifestyle (optional, can multi-select).</p>
+          
+          <div class="checkbox-grid setup-checkboxes">
+            <label class="custom-checkbox"><input type="checkbox" name="setupRestrictions" value="vegetarian"> Vegetarian</label>
+            <label class="custom-checkbox"><input type="checkbox" name="setupRestrictions" value="vegan"> Vegan</label>
+            <label class="custom-checkbox"><input type="checkbox" name="setupRestrictions" value="pescatarian"> Pescatarian</label>
+            <label class="custom-checkbox"><input type="checkbox" name="setupRestrictions" value="keto"> Keto</label>
+            <label class="custom-checkbox"><input type="checkbox" name="setupRestrictions" value="gluten free"> Gluten-Free</label>
+            <label class="custom-checkbox"><input type="checkbox" name="setupRestrictions" value="dairy free"> Dairy-Free</label>
+            <label class="custom-checkbox"><input type="checkbox" name="setupRestrictions" value="mediterranean"> Mediterranean</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary full-width margin-top-md">Enter The Kitchen</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- OVERLAY MODAL 2: RECIPE DETAIL VIEW -->
+  <div id="recipeDetailModal" class="modal-overlay">
+    <div class="recipe-modal-card">
+      <button class="modal-close-btn" id="closeRecipeModalBtn">&times;</button>
+      
+      <div class="recipe-modal-content" id="recipeModalContent">
+        <!-- Recipe details load here dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TAP-TO-PLACE SIDEBAR CALENDAR SLOT CHOOSER (Mobile Fallback Modal) -->
+  <div id="slotChooserModal" class="modal-overlay">
+    <div class="slot-chooser-card">
+      <h3>Select Slot for Scheduled Meal</h3>
+      <p id="slotChooserRecipeName" style="font-style: italic; font-weight: 500;"></p>
+      
+      <div class="form-group">
+        <label for="slotChooserDay">Select Day</label>
+        <select id="slotChooserDay">
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+          <option value="Saturday">Saturday</option>
+          <option value="Sunday">Sunday</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="slotChooserMeal">Select Meal Slot</label>
+        <select id="slotChooserMeal">
+          <option value="breakfast">Breakfast</option>
+          <option value="lunch">Lunch</option>
+          <option value="dinner">Dinner</option>
+        </select>
+      </div>
+
+      <div class="slot-chooser-actions">
+        <button id="cancelSlotChooserBtn" class="btn-secondary">Cancel</button>
+        <button id="confirmSlotChooserBtn" class="btn-primary">Add to Planner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

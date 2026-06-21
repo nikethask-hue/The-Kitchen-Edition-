@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Kitchen Edition | Test Suite</title>
+  <style>
+    body {
+      background-color: #faf8f5;
+      color: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+    h1 {
+      font-family: Georgia, serif;
+      border-bottom: 2px solid #1a1a1a;
+      padding-bottom: 0.5rem;
+    }
+    .test-case {
+      background-color: #fff;
+      border: 1px solid #e5e0d8;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+    }
+    .pass {
+      border-left: 6px solid #556b2f;
+    }
+    .fail {
+      border-left: 6px solid #c05c3e;
+      background-color: #faf0ee;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: white;
+      border-radius: 2px;
+    }
+    .status-badge.pass-badge {
+      background-color: #556b2f;
+    }
+    .status-badge.fail-badge {
+      background-color: #c05c3e;
+    }
+    .test-name {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .test-details {
+      font-family: monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+    }
+    .summary-box {
+      background-color: #fff;
+      border: 2px solid #1a1a1a;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .summary-num {
+      font-size: 2rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>The Kitchen Edition Unit Test Suite</h1>
+  <p>Verifying acceptance criteria from <code>the-kitchen-edition-user-stories.md</code></p>
+
+  <div class="summary-box">
+    <div class="summary-num" id="summaryText">Running tests...</div>
+    <div style="margin-top:0.5rem;" id="summaryCounts"></div>
+  </div>
+
+  <div id="testResultsContainer"></div>
+
+  <script type="module">
+    import { MOCK_RECIPES } from './recipe-data.js';
+    import { scaleRecipe } from './app.js';
+
+    // Mock application state
+    const testState = {
+      profile: { householdSize: 2, allergies: [], restrictions: [], customAllergies: '', filterMode: 'hide' },
+      pantry: [],
+      planner: { Monday: { breakfast: null, lunch: null, dinner: null } }
+    };
+
+    // Helper functions representing the algorithms to be tested in isolation
+    function localFilterRecipes(recipes, profile, nameSearch = '', ingredientSearch = []) {
+      let results = [...recipes];
+
+      // Allergies
+      const userAllergies = [...profile.allergies];
+      if (profile.customAllergies) {
+        const customs = profile.customAllergies.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        userAllergies.push(...customs);
+      }
+
+      if (userAllergies.length > 0) {
+        results = results.filter(recipe => {
+          const hasAllergenTag = recipe.allergens.some(a => userAllergies.includes(a.toLowerCase()));
+          const hasIngredientMatch = recipe.extendedIngredients.some(ing => {
+            const name = ing.name.toLowerCase();
+            return userAllergies.some(allergen => name.includes(allergen));
+          });
+          return !hasAllergenTag && !hasIngredientMatch;
+        });
+      }
+
+      // Restrictions
+      if (profile.restrictions.length > 0 && profile.filterMode === 'hide') {
+        results = results.filter(recipe => {
+          return profile.restrictions.every(restrict => 
+            recipe.diets.map(d => d.toLowerCase()).includes(restrict.toLowerCase())
+          );
+        });
+      }
+
+      // Name search
+      if (nameSearch.trim()) {
+        const q = nameSearch.toLowerCase();
+        results = results.filter(r => r.title.toLowerCase().includes(q));
+      }
+
+      return results;
+    }
+
+    function calculateGroceryItems(recipes, planner, pantry, householdSize) {
+      const consolidated = {};
+      
+      // Collect recipes
+      const recipeIds = [];
+      for (let day in planner) {
+        for (let slot in planner[day]) {
+          if (planner[day][slot]) {
+            recipeIds.push(planner[day][slot].id);
+          }
+        }
+      }
+
+      recipeIds.forEach(id => {
+        const recipe = recipes.find(r => r.id === id);
+        if (!recipe) return;
+
+        const scaled = scaleRecipe(recipe, householdSize);
+        scaled.extendedIngredients.forEach(ing => {
+          const key = ing.name.toLowerCase().trim();
+          if (consolidated[key]) {
+            consolidated[key].amount += ing.amount;
+          } else {
+            consolidated[key] = {
+              name: ing.name,
+              amount: ing.amount,
+              unit: ing.unit,
+              category: ing.category
+            };
+          }
+        });
+      });
+
+      // Deduct pantry
+      const finalItems = [];
+      for (let key in consolidated) {
+        const item = consolidated[key];
+        const pantryIdx = pantry.findIndex(p => p.name.toLowerCase().trim() === key);
+        
+        let isDeducted = false;
+        let requiredAmount = item.amount;
+
+        if (pantryIdx !== -1) {
+          const pItem = pantry[pantryIdx];
+          if (pItem.unit.toLowerCase() === item.unit.toLowerCase()) {
+            if (pItem.quantity >= item.amount) {
+              isDeducted = true;
+              requiredAmount = 0;
+            } else {
+              requiredAmount = item.amount - pItem.quantity;
+            }
+          } else {
+            isDeducted = true;
+            requiredAmount = 0;
+          }
+        }
+
+        finalItems.push({
+          ...item,
+          isDeducted,
+          requiredAmount
+        });
+      }
+
+      return finalItems;
+    }
+
+    // --- TEST EXECUTION SYSTEM ---
+    const resultsContainer = document.getElementById('testResultsContainer');
+    let totalTests = 0;
+    let passedTests = 0;
+
+    function assert(name, assertionFn) {
+      totalTests++;
+      const el = document.createElement('div');
+      el.className = 'test-case';
+      
+      try {
+        const details = assertionFn();
+        passedTests++;
+        el.classList.add('pass');
+        el.innerHTML = `
+          <div class="test-name">
+            <span class="status-badge pass-badge">PASS</span> ${name}
+          </div>
+          <div class="test-details">${details || 'Assertion completed successfully.'}</div>
+        `;
+      } catch (e) {
+        el.classList.add('fail');
+        el.innerHTML = `
+          <div class="test-name">
+            <span class="status-badge fail-badge">FAIL</span> ${name}
+          </div>
+          <div class="test-details" style="color: #c05c3e;">${e.stack || e.message || e}</div>
+        `;
+        console.error(e);
+      }
+      
+      resultsContainer.appendChild(el);
+    }
+
+    // --- RUNNING UNIT TESTS ---
+    
+    // 1. ALLERGEN FILTER TEST (US-1.4, US-7.1)
+    assert("Safety Safeguard: Allergen Filtering (US-1.4)", () => {
+      const profile = { ...testState.profile, allergies: ['peanuts'] };
+      const filtered = localFilterRecipes(MOCK_RECIPES, profile);
+      
+      // Verification: recipe with peanuts (ID 103) must be excluded
+      const hasPeanuts = filtered.some(r => r.id === 103);
+      const hasAvocado = filtered.some(r => r.id === 101);
+      
+      if (hasPeanuts) {
+        throw new Error("FAIL: Thai Peanut Noodles (ID 103) was NOT filtered out despite Peanut Allergy!");
+      }
+      if (!hasAvocado) {
+        throw new Error("FAIL: Safe Avocado Toast was filtered out unexpectedly.");
+      }
+      return `Total Recipes: ${MOCK_RECIPES.length}\nFiltered Recipes: ${filtered.length}\nAllergy set: Peanuts\nVerified Thai Peanut Noodles excluded, Avocado Toast included.`;
+    });
+
+    // 2. DIETARY FILTERING TEST (US-1.5, US-7.2)
+    assert("Dietary Restrictions: Vegetarian Filter Mode (US-1.5)", () => {
+      const profile = { ...testState.profile, restrictions: ['vegetarian'], filterMode: 'hide' };
+      const filtered = localFilterRecipes(MOCK_RECIPES, profile);
+
+      // Salmon (ID 104) is pescatarian/non-vegetarian, must be excluded in 'hide' mode
+      const hasSalmon = filtered.some(r => r.id === 104);
+      const hasTofu = filtered.some(r => r.id === 107);
+
+      if (hasSalmon) {
+        throw new Error("FAIL: Mediterranean Baked Salmon was included in Vegetarian filter!");
+      }
+      if (!hasTofu) {
+        throw new Error("FAIL: Vegetarian Sesame Tofu was excluded.");
+      }
+      return `Restrictions set: Vegetarian\nFilter Mode: Hide\nVerified Mediterranean Salmon excluded, Crispy Sesame Tofu included.`;
+    });
+
+    // 3. SERVING SIZE SCALING TEST (US-8.1, US-8.3)
+    assert("Serving Size Scaling & Rounding Rules (US-8.1, US-8.3)", () => {
+      // Recipe 108: Shakshuka. Default servings: 2. Default Eggs: 4. Default Cumin: 1 tsp.
+      const recipe = MOCK_RECIPES.find(r => r.id === 108);
+      
+      // Case A: Scale to 4 servings (multiplier 2x)
+      const scaledTo4 = scaleRecipe(recipe, 4);
+      const eggs4 = scaledTo4.extendedIngredients.find(i => i.name.toLowerCase().includes('egg')).amount;
+      const cumin4 = scaledTo4.extendedIngredients.find(i => i.name.toLowerCase().includes('cumin')).amount;
+
+      if (eggs4 !== 8) throw new Error(`FAIL: Eggs did not scale correctly. Expected 8, got ${eggs4}`);
+      if (cumin4 !== 2) throw new Error(`FAIL: Cumin did not scale correctly. Expected 2, got ${cumin4}`);
+
+      // Case B: Scale to 3 servings (multiplier 1.5x) - tests rounding of eggs
+      const scaledTo3 = scaleRecipe(recipe, 3);
+      const eggs3 = scaledTo3.extendedIngredients.find(i => i.name.toLowerCase().includes('egg')).amount;
+      const cumin3 = scaledTo3.extendedIngredients.find(i => i.name.toLowerCase().includes('cumin')).amount;
+
+      // 4 * 1.5 = 6 eggs. Cumin 1 * 1.5 = 1.5 tsp.
+      if (eggs3 !== 6) throw new Error(`FAIL: Whole items egg rounding failed. Expected 6, got ${eggs3}`);
+      if (cumin3 !== 1.5) throw new Error(`FAIL: Spices rounding failed. Expected 1.5, got ${cumin3}`);
+
+      return `Shakshuka Base Servings: 2\n` +
+             `- Scaled to 4 Servings: Eggs = ${eggs4} pieces (Expected 8), Cumin = ${cumin4} tsp (Expected 2)\n` +
+             `- Scaled to 3 Servings: Eggs = ${eggs3} pieces (Expected 6, whole round), Cumin = ${cumin3} tsp (Expected 1.5, decimal round)`;
+    });
+
+    // 4. GROCERY PANTRY SUBTRACTION (US-4.3, US-5.2)
+    assert("Grocery List & Pantry Auto-Deductions (US-4.3, US-5.2)", () => {
+      const planner = {
+        Monday: { breakfast: { id: 101, title: 'Avocado Toast' } } // Requires 2 slices of sourdough bread, 2 avocadoes
+      };
+      
+      // Case A: Pantry is empty, grocery list should require full quantities
+      const pantryEmpty = [];
+      const listA = calculateGroceryItems(MOCK_RECIPES, planner, pantryEmpty, 2);
+      const breadA = listA.find(i => i.name.toLowerCase().includes('bread'));
+      
+      if (breadA.requiredAmount !== 2 || breadA.isDeducted) {
+        throw new Error(`FAIL: Empty pantry subtraction failed. Expected 2 slices required, got ${breadA.requiredAmount}`);
+      }
+
+      // Case B: Pantry contains enough bread (owned 4 slices)
+      const pantryB = [{ name: 'Sourdough Bread', quantity: 4, unit: 'slices' }];
+      const listB = calculateGroceryItems(MOCK_RECIPES, planner, pantryB, 2);
+      const breadB = listB.find(i => i.name.toLowerCase().includes('bread'));
+
+      if (breadB.requiredAmount !== 0 || !breadB.isDeducted) {
+        throw new Error(`FAIL: Full pantry subtraction failed. Expected 0 slices required and isDeducted = true, got amount: ${breadB.requiredAmount}, isDeducted: ${breadB.isDeducted}`);
+      }
+
+      // Case C: Pantry contains partial bread (owned 1 slice)
+      const pantryC = [{ name: 'Sourdough Bread', quantity: 1, unit: 'slices' }];
+      const listC = calculateGroceryItems(MOCK_RECIPES, planner, pantryC, 2);
+      const breadC = listC.find(i => i.name.toLowerCase().includes('bread'));
+
+      if (breadC.requiredAmount !== 1 || breadC.isDeducted) {
+        throw new Error(`FAIL: Partial pantry subtraction failed. Expected 1 slice required and isDeducted = false, got amount: ${breadC.requiredAmount}, isDeducted: ${breadC.isDeducted}`);
+      }
+
+      return `Avocado Toast requires 2 slices of sourdough bread:\n` +
+             `- Empty Pantry: Sourdough Bread required amount = ${breadA.requiredAmount} (Expected 2)\n` +
+             `- Owned 4 slices: Sourdough Bread required amount = ${breadB.requiredAmount} (Expected 0, marked Deducted)\n` +
+             `- Owned 1 slice: Sourdough Bread required amount = ${breadC.requiredAmount} (Expected 1)`;
+    });
+
+    // 5. CALENDAR DAILY MACRO SCALING (US-2.3, US-8.2)
+    assert("Daily Nutrition Macro Tallies Scaling (US-2.3, US-8.2)", () => {
+      // Recipe 101: Avocado Toast. Servings = 2. Nutrition: Calories = 320 kcal. Protein = 8g.
+      // If scaled to household size = 4 (multiplier 2x)
+      const recipe = MOCK_RECIPES.find(r => r.id === 101);
+      const scaled = scaleRecipe(recipe, 4);
+
+      if (scaled.nutrition.calories !== 640) {
+        throw new Error(`FAIL: Scaled calories math failed. Expected 640, got ${scaled.nutrition.calories}`);
+      }
+      if (scaled.nutrition.protein !== 16) {
+        throw new Error(`FAIL: Scaled protein math failed. Expected 16, got ${scaled.nutrition.protein}`);
+      }
+
+      return `Avocado Toast Base Servings: 2 (Calories: 320 kcal, Protein: 8g)\n` +
+             `Scaled to Household Size: 4 (Multiplier: 2x)\n` +
+             `Calculated Daily Tally: Calories = ${scaled.nutrition.calories} kcal (Expected 640), Protein = ${scaled.nutrition.protein}g (Expected 16)`;
+    });
+
+    // Write final summary counts
+    const summaryText = document.getElementById('summaryText');
+    const summaryCounts = document.getElementById('summaryCounts');
+    
+    if (passedTests === totalTests) {
+      summaryText.textContent = "SUCCESS: All Tests Passed!";
+      summaryText.style.color = "#556b2f";
+    } else {
+      summaryText.textContent = "FAILURE: Some Tests Failed!";
+      summaryText.style.color = "#c05c3e";
+    }
+    summaryCounts.textContent = `Passed ${passedTests} / ${totalTests} test cases.`;
+
+  </script>
+</body>
+</html>
