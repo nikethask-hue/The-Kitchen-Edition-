@@ -12,6 +12,106 @@
   
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="style.css">
+  <style>
+    .tke-nav-pill {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 8px;
+    }
+
+    .tke-plan-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      border: 0.5px solid rgba(17, 17, 17, 0.16);
+      background: rgba(47, 95, 130, 0.12);
+      color: #2f5f82;
+    }
+
+    .tke-plan-badge.ultra {
+      background: rgba(120, 90, 170, 0.14);
+      color: #6d4aa8;
+      border-color: rgba(109, 74, 168, 0.18);
+    }
+
+    .tke-locked-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: grid;
+      place-content: center;
+      gap: 8px;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.92);
+      color: #171716;
+      backdrop-filter: blur(3px);
+    }
+
+    .tke-lock-icon {
+      font-size: 20px;
+    }
+
+    .tke-lock-message {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.4;
+      max-width: 240px;
+    }
+
+    .tke-lock-cta {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #2f5f82;
+      text-decoration: none;
+    }
+
+    .tke-inline-message {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 0.5px solid rgba(59, 109, 17, 0.18);
+      background: rgba(59, 109, 17, 0.08);
+      color: #3b6d11;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tke-plan-badge {
+        color: #8ec6f2;
+        border-color: rgba(142, 198, 242, 0.22);
+        background: rgba(142, 198, 242, 0.14);
+      }
+
+      .tke-plan-badge.ultra {
+        color: #d7b9ff;
+        border-color: rgba(215, 185, 255, 0.2);
+        background: rgba(215, 185, 255, 0.14);
+      }
+
+      .tke-locked-overlay {
+        background: rgba(30, 30, 30, 0.92);
+        color: #f6f1e7;
+      }
+
+      .tke-inline-message {
+        color: #8fd15b;
+        border-color: rgba(143, 209, 91, 0.18);
+        background: rgba(143, 209, 91, 0.12);
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -416,5 +516,148 @@
 
   <!-- Scripts -->
   <script type="module" src="app.js"></script>
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const plan = params.get('plan');
+      if (plan) {
+        localStorage.setItem('tke_plan', plan);
+      }
+      const activePlan = localStorage.getItem('tke_plan') || 'free';
+
+      const navList = document.querySelector('.editorial-nav ul');
+      if (navList) {
+        const existingBadge = document.getElementById('planBadge');
+        if (existingBadge) existingBadge.remove();
+        if (activePlan === 'pro' || activePlan === 'ultra') {
+          const badgeItem = document.createElement('li');
+          badgeItem.id = 'planBadge';
+          badgeItem.className = 'tke-nav-pill';
+          badgeItem.innerHTML = `<span class="tke-plan-badge ${activePlan === 'ultra' ? 'ultra' : 'pro'}">${activePlan === 'ultra' ? 'Ultra' : 'Pro'}</span>`;
+          navList.appendChild(badgeItem);
+        }
+      }
+
+      const discoverGrid = document.getElementById('discoverGrid');
+      const prepDashboard = document.getElementById('prepDashboard');
+      const pantryForm = document.getElementById('pantryForm');
+      const profileCard = document.querySelector('.profile-layout-grid .profile-card:last-child');
+      const searchBtn = document.getElementById('recipeSearchBtn');
+      const searchInput = document.getElementById('recipeSearchInput');
+
+      function removeOverlay(target) {
+        if (!target) return;
+        const overlay = target.querySelector('.tke-locked-overlay');
+        if (overlay) overlay.remove();
+      }
+
+      function addOverlay(target, message) {
+        if (!target) return;
+        if (target.querySelector('.tke-locked-overlay')) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'tke-locked-overlay';
+        overlay.innerHTML = `<span class="tke-lock-icon">🔒</span><p class="tke-lock-message">${message}</p><a href="pricing.html" class="tke-lock-cta">See plans →</a>`;
+        target.style.position = 'relative';
+        target.appendChild(overlay);
+      }
+
+      function getDiscoverCount() {
+        return Number(localStorage.getItem('tke_discover_count') || '0');
+      }
+
+      function setDiscoverCount(value) {
+        localStorage.setItem('tke_discover_count', String(value));
+      }
+
+      function showDiscoverMessage(message) {
+        let notice = document.getElementById('tke-discover-notice');
+        if (!notice) {
+          notice = document.createElement('div');
+          notice.id = 'tke-discover-notice';
+          notice.className = 'tke-inline-message';
+          if (discoverGrid) {
+            discoverGrid.insertAdjacentElement('beforebegin', notice);
+          }
+        }
+        notice.textContent = message;
+      }
+
+      function clearDiscoverMessage() {
+        const notice = document.getElementById('tke-discover-notice');
+        if (notice) notice.remove();
+      }
+
+      function handleDiscoverAttempt(event) {
+        if (activePlan !== 'free') return true;
+        const count = getDiscoverCount();
+        if (count >= 30) {
+          event.preventDefault();
+          showDiscoverMessage('You’ve reached the free discovery limit for this month. Upgrade to Pro for unlimited recipe discoveries.');
+          return false;
+        }
+
+        setDiscoverCount(count + 1);
+        if (getDiscoverCount() >= 30) {
+          showDiscoverMessage('You’ve reached the free discovery limit for this month. Upgrade to Pro for unlimited recipe discoveries.');
+        } else {
+          clearDiscoverMessage();
+        }
+        return true;
+      }
+
+      if (activePlan === 'free') {
+        if (discoverGrid) addOverlay(discoverGrid, 'AI meal suggestions and advanced discovery tools are available on Pro and Ultra.');
+        if (prepDashboard) addOverlay(prepDashboard, 'Available on Pro and Ultra');
+        if (profileCard) addOverlay(profileCard, 'Multi-household sync and priority access are available on Pro and Ultra.');
+
+        if (pantryForm) {
+          pantryForm.addEventListener('submit', function (event) {
+            const stateRaw = localStorage.getItem('THE_KITCHEN_EDITION_STATE');
+            const pantryCount = stateRaw ? JSON.parse(stateRaw).pantry?.length || 0 : 0;
+            if (pantryCount >= 20) {
+              event.preventDefault();
+              let notice = document.getElementById('tke-pantry-notice');
+              if (!notice) {
+                notice = document.createElement('div');
+                notice.id = 'tke-pantry-notice';
+                notice.className = 'tke-inline-message';
+                pantryForm.insertAdjacentElement('afterend', notice);
+              }
+              notice.textContent = 'Upgrade to Pro to add unlimited pantry items.';
+            }
+          });
+        }
+      } else if (activePlan === 'pro') {
+        if (discoverGrid) removeOverlay(discoverGrid);
+        if (prepDashboard) removeOverlay(prepDashboard);
+        if (profileCard) addOverlay(profileCard, 'Multi-household sync and priority access are available on Ultra.');
+      } else if (activePlan === 'ultra') {
+        if (discoverGrid) removeOverlay(discoverGrid);
+        if (prepDashboard) removeOverlay(prepDashboard);
+        if (profileCard) removeOverlay(profileCard);
+      }
+
+      if (searchBtn) {
+        searchBtn.addEventListener('click', function (event) {
+          handleDiscoverAttempt(event);
+        });
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') {
+            handleDiscoverAttempt(event);
+          }
+        });
+      }
+    })();
+  </script>
+  <!--
+    <div style="position:fixed;bottom:8px;right:8px;font-size:11px;z-index:999">
+      <button onclick="localStorage.setItem('tke_plan','free');location.reload()">Free</button>
+      <button onclick="localStorage.setItem('tke_plan','pro');location.reload()">Pro</button>
+      <button onclick="localStorage.setItem('tke_plan','ultra');location.reload()">Ultra</button>
+    </div>
+  -->
 </body>
 </html>
