@@ -1,5 +1,7 @@
 import { MOCK_RECIPES } from './recipe-data.js';
 
+const SPOONACULAR_API_KEY = 'YOUR_SPOONACULAR_KEY_HERE';
+
 // --- GLOBAL APPLICATION STATE ---
 let state = {
   profile: {
@@ -20,7 +22,6 @@ let state = {
   },
   pantry: [], // list of { name, quantity, unit }
   favorites: [], // list of recipe IDs
-  apiKey: '', // Spoonacular API Key
   prepCheckedSteps: {}, // { stepId: true/false }
   groceryCheckedItems: {} // { itemKey: true/false }
 };
@@ -51,7 +52,6 @@ function loadState() {
       state.planner = { ...state.planner, ...parsed.planner };
       state.pantry = parsed.pantry || [];
       state.favorites = parsed.favorites || [];
-      state.apiKey = parsed.apiKey || '';
       state.prepCheckedSteps = parsed.prepCheckedSteps || {};
       state.groceryCheckedItems = parsed.groceryCheckedItems || {};
       isSetupCompleted = true;
@@ -262,7 +262,7 @@ function parseTemperature(text) {
   return null;
 }
 
-// Main Recipe Retrieval (Local Mock or Spoonacular API)
+// Main Recipe Retrieval (Spoonacular API)
 async function fetchRecipes(options = {}) {
   const { nameSearch = '', ingredientSearch = [] } = options;
   
@@ -275,49 +275,39 @@ async function fetchRecipes(options = {}) {
   
   const userRestrictions = state.profile.restrictions;
   
-  // IF SPOONACULAR API KEY IS AVAILABLE
-  if (state.apiKey) {
-    try {
-      showSyncState('Fetching API...');
-      let url = '';
-      let results = [];
-      
-      const dietParam = userRestrictions.join(',');
-      const intoleranceParam = userAllergies.join(',');
-      
-      if (ingredientSearch.length > 0) {
-        // Find by ingredients API
-        const ingredients = ingredientSearch.join(',');
-        url = `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${encodeURIComponent(ingredients)}&number=12&ignorePantry=false&apiKey=${state.apiKey}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('API request failed');
-        const rawResults = await response.json();
-        
-        // FindByIngredients endpoint lacks detailed instructions/diets, we need to fetch info for each card.
-        // To save API points, we map what we can and mock fallback instructions, or batch fetch details.
-        // For standard reliability, we fetch full details for the top 4 matched recipes.
-        const topMatches = rawResults.slice(0, 4);
-        results = await Promise.all(topMatches.map(async (r) => {
-          return await fetchRecipeById(r.id);
-        }));
-      } else {
-        // Search by name API
-        url = `https://api.spoonacular.com/recipes/complexSearch?query=${encodeURIComponent(nameSearch)}&diet=${encodeURIComponent(dietParam)}&intolerances=${encodeURIComponent(intoleranceParam)}&addRecipeNutrition=true&number=12&apiKey=${state.apiKey}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('API request failed');
-        const data = await response.json();
-        results = (data.results || []).map(r => mapSpoonacularToInternal(r));
-      }
-      
-      showSyncState('Synced to Account');
-      return results;
-    } catch (err) {
-      console.warn('Spoonacular API Fetch failed, falling back to mock database', err);
-      showToast('API fetch failed. Using local database fallback.', 'error');
+  try {
+    showSyncState('Fetching API...');
+    let url = '';
+    let results = [];
+    
+    const dietParam = userRestrictions.join(',');
+    const intoleranceParam = userAllergies.join(',');
+    
+    if (ingredientSearch.length > 0) {
+      const ingredients = ingredientSearch.join(',');
+      url = `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${encodeURIComponent(ingredients)}&number=12&ignorePantry=false&apiKey=${SPOONACULAR_API_KEY}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('API request failed');
+      const rawResults = await response.json();
+      const topMatches = rawResults.slice(0, 4);
+      results = await Promise.all(topMatches.map(async (r) => {
+        return await fetchRecipeById(r.id);
+      }));
+    } else {
+      url = `https://api.spoonacular.com/recipes/complexSearch?query=${encodeURIComponent(nameSearch)}&diet=${encodeURIComponent(dietParam)}&intolerances=${encodeURIComponent(intoleranceParam)}&addRecipeNutrition=true&number=12&apiKey=${SPOONACULAR_API_KEY}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('API request failed');
+      const data = await response.json();
+      results = (data.results || []).map(r => mapSpoonacularToInternal(r));
     }
+    
+    showSyncState('Synced to Account');
+    return results;
+  } catch (err) {
+    console.warn('Spoonacular API Fetch failed', err);
+    showToast('Recipe data could not be loaded right now.', 'error');
+    return [];
   }
-
-  // --- LOCAL DATABASE FILTERING (MOCK FALLBACK) ---
   let results = [...MOCK_RECIPES];
 
   // 1. Safety Hard-Filter: Exclude any recipe containing user allergies (US-1.4, US-7.1)
@@ -391,18 +381,16 @@ async function fetchRecipeById(id) {
 
   if (API_RECIPE_CACHE[id]) return API_RECIPE_CACHE[id];
 
-  if (state.apiKey) {
-    try {
-      const url = `https://api.spoonacular.com/recipes/${id}/information?includeNutrition=true&apiKey=${state.apiKey}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch detailed recipe');
-      const data = await response.json();
-      const mapped = mapSpoonacularToInternal(data);
-      API_RECIPE_CACHE[id] = mapped;
-      return mapped;
-    } catch (e) {
-      console.error('API detailed fetch failed', e);
-    }
+  try {
+    const url = `https://api.spoonacular.com/recipes/${id}/information?includeNutrition=true&apiKey=${SPOONACULAR_API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch detailed recipe');
+    const data = await response.json();
+    const mapped = mapSpoonacularToInternal(data);
+    API_RECIPE_CACHE[id] = mapped;
+    return mapped;
+  } catch (e) {
+    console.error('API detailed fetch failed', e);
   }
 
   return null;
@@ -526,17 +514,6 @@ if (syncBtn) {
   });
 }
 
-// API Key save trigger
-const apiKeyBtn = document.getElementById('saveApiKeyBtn');
-if (apiKeyBtn) {
-  apiKeyBtn.addEventListener('click', () => {
-    const val = document.getElementById('spoonacularApiKey').value.trim();
-    state.apiKey = val;
-    saveState();
-    showToast(val ? 'Spoonacular API Key enabled!' : 'Spoonacular API Key disabled.');
-  });
-}
-
 function updateActiveProfileSummary() {
   const el = document.getElementById('activeProfileSummary');
   if (el) {
@@ -557,7 +534,6 @@ function renderProfilePage() {
   document.getElementById('profileHouseholdSize').value = state.profile.householdSize;
   document.getElementById('profileCustomAllergies').value = state.profile.customAllergies || '';
   document.getElementById('profileFilterMode').value = state.profile.filterMode || 'hide';
-  document.getElementById('spoonacularApiKey').value = state.apiKey || '';
 
   // Check boxes
   document.querySelectorAll('input[name="allergies"]').forEach(cb => {
