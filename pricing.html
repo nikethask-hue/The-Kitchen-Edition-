@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Kitchen Edition | Pricing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f2e8;
+      --surface: #ffffff;
+      --surface-alt: #f8f6ee;
+      --text: #171716;
+      --muted: #66655f;
+      --border: rgba(23, 23, 22, 0.16);
+      --accent: #3b6d11;
+      --accent-soft: rgba(59, 109, 17, 0.12);
+      --primary: #111111;
+      --blue: #2f5f82;
+      --blue-soft: rgba(47, 95, 130, 0.12);
+      --toggle-bg: #111111;
+      --toggle-knob: #ffffff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #121212;
+        --surface: #1a1a1a;
+        --surface-alt: #222222;
+        --text: #f1efe8;
+        --muted: #b3b1a9;
+        --border: rgba(241, 239, 232, 0.16);
+        --accent: #8fd15b;
+        --accent-soft: rgba(143, 209, 91, 0.16);
+        --primary: #ffffff;
+        --blue: #8ec6f2;
+        --blue-soft: rgba(142, 198, 242, 0.16);
+        --toggle-bg: #f1efe8;
+        --toggle-knob: #121212;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 18px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .masthead {
+      border-top: 1.5px solid var(--text);
+      border-bottom: 0.5px solid var(--border);
+      padding: 22px 0 18px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-family: "Playfair Display", serif;
+      font-size: 32px;
+      font-weight: 500;
+      line-height: 1.1;
+    }
+
+    .subhead {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--muted);
+    }
+
+    .billing-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0 22px;
+      flex-wrap: wrap;
+    }
+
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border: 0.5px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--toggle-bg);
+      cursor: pointer;
+      transition: background 0.2s ease;
+      border: none;
+      padding: 0;
+    }
+
+    .toggle-switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--toggle-knob);
+      transition: transform 0.2s ease;
+    }
+
+    .toggle-switch.active::after {
+      transform: translateX(20px);
+    }
+
+    .save-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 500;
+      border: 0.5px solid rgba(59, 109, 17, 0.18);
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+      border: 0.5px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .plan-card {
+      padding: 24px;
+      background: var(--surface);
+      border-left: 0.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .plan-card:first-child {
+      border-left: 0;
+    }
+
+    .plan-card.featured {
+      background: var(--surface-alt);
+    }
+
+    .plan-name {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 500;
+      font-family: "Playfair Display", serif;
+    }
+
+    .plan-copy {
+      margin: 0;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .plan-price {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-top: 16px;
+    }
+
+    .price-value {
+      font-family: "Playfair Display", serif;
+      font-size: 30px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .price-unit {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .plan-note {
+      margin: 8px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      min-height: 16px;
+    }
+
+    .popular-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      margin-top: 14px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 500;
+      border: 0.5px solid rgba(47, 95, 130, 0.18);
+    }
+
+    .plan-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 0.5px solid var(--text);
+      background: transparent;
+      color: var(--text);
+      transition: background 0.2s ease, color 0.2s ease;
+      cursor: pointer;
+    }
+
+    .plan-cta.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--surface);
+    }
+
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 18px 0 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .feature-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12.5px;
+      line-height: 1.4;
+      color: var(--text);
+    }
+
+    .feature-row.dimmed {
+      color: var(--muted);
+    }
+
+    .feature-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .feature-icon.check {
+      color: var(--accent);
+    }
+
+    .feature-icon.cross {
+      color: var(--muted);
+    }
+
+    .section-divider {
+      margin: 22px 0 0;
+      padding-top: 14px;
+      border-top: 0.5px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .footer-note {
+      max-width: 720px;
+      margin: 28px auto 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .footer-note p {
+      margin: 0;
+    }
+
+    .footer-note p + p {
+      margin-top: 5px;
+    }
+
+    @media (max-width: 860px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .plan-card {
+        border-left: 0;
+        border-top: 0.5px solid var(--border);
+      }
+
+      .plan-card:first-child {
+        border-top: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page {
+        padding: 16px 14px 36px;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .billing-row {
+        justify-content: flex-start;
+      }
+
+      .plan-card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← Back to app</a>
+
+    <header class="masthead">
+      <p class="eyebrow">No. 1 • The Kitchen Edition — Subscription</p>
+      <h1>Choose your edition</h1>
+      <p class="subhead">A membership for every kitchen, from the curious cook to the dedicated household chef.</p>
+    </header>
+
+    <div class="billing-row" aria-label="Billing toggle">
+      <span class="toggle-pill">
+        <span id="billingLabel">Monthly</span>
+        <button class="toggle-switch active" id="billingToggle" type="button" aria-pressed="true" aria-label="Switch billing period"></button>
+        <span>Annual</span>
+      </span>
+      <span class="save-badge">Save 20%</span>
+    </div>
+
+    <div class="pricing-grid" role="list">
+      <article class="plan-card" role="listitem">
+        <h2 class="plan-name">Free</h2>
+        <p class="plan-copy">A calm starting point for everyday planning and recipe discovery.</p>
+        <div class="plan-price">
+          <span class="price-value" data-monthly="$0" data-annual="$0">$0</span>
+          <span class="price-unit">Always free</span>
+        </div>
+        <p class="plan-note">Billed monthly</p>
+        <a class="plan-cta" href="index.html">Start free</a>
+
+        <div class="section-divider">Included</div>
+        <ul class="feature-list">
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>30 recipe discoveries/month</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Weekly meal planner (7 slots)</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Grocery list generator</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Smart pantry (up to 20 items)</li>
+          <li class="feature-row dimmed"><span class="feature-icon cross"><i class="ti ti-x"></i></span>Meal prep consolidator</li>
+          <li class="feature-row dimmed"><span class="feature-icon cross"><i class="ti ti-x"></i></span>AI meal suggestions</li>
+          <li class="feature-row dimmed"><span class="feature-icon cross"><i class="ti ti-x"></i></span>Household sync</li>
+          <li class="feature-row dimmed"><span class="feature-icon cross"><i class="ti ti-x"></i></span>Nutrition tracking</li>
+        </ul>
+      </article>
+
+      <article class="plan-card featured" role="listitem">
+        <h2 class="plan-name">Pro</h2>
+        <p class="plan-copy">For cooks who want more ideas, structure, and smarter kitchen support.</p>
+        <div class="plan-price">
+          <span class="price-value" data-monthly="$8/mo" data-annual="$6/mo">$8/mo</span>
+          <span class="price-unit">per month</span>
+        </div>
+        <p class="plan-note" data-monthly="Billed monthly" data-annual="Billed $77 / year">Billed monthly</p>
+        <span class="popular-pill">Most popular</span>
+        <a class="plan-cta primary" href="index.html">Upgrade to Pro</a>
+
+        <div class="section-divider">Everything in Free, plus</div>
+        <ul class="feature-list">
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Unlimited recipe discoveries</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>AI-powered meal suggestions</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Meal prep consolidator</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Unlimited pantry inventory</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Spoonacular API integration</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Nutrition breakdown per meal</li>
+          <li class="feature-row dimmed"><span class="feature-icon cross"><i class="ti ti-x"></i></span>Multi-household sync</li>
+          <li class="feature-row dimmed"><span class="feature-icon cross"><i class="ti ti-x"></i></span>Priority AI model access</li>
+        </ul>
+      </article>
+
+      <article class="plan-card" role="listitem">
+        <h2 class="plan-name">Ultra</h2>
+        <p class="plan-copy">For homes that want deep coordination, analytics, and premium support.</p>
+        <div class="plan-price">
+          <span class="price-value" data-monthly="$18/mo" data-annual="$14/mo">$18/mo</span>
+          <span class="price-unit">per month</span>
+        </div>
+        <p class="plan-note" data-monthly="Billed monthly" data-annual="Billed $173 / year">Billed monthly</p>
+        <a class="plan-cta" href="index.html">Go Ultra</a>
+
+        <div class="section-divider">Everything in Pro, plus</div>
+        <ul class="feature-list">
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Up to 5 household profiles</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Real-time multi-device sync</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Priority AI model access</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Advanced meal analytics</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Monthly kitchen report</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Custom recipe collections</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Early access to new features</li>
+          <li class="feature-row"><span class="feature-icon check"><i class="ti ti-check"></i></span>Priority support</li>
+        </ul>
+      </article>
+    </div>
+
+    <footer class="footer-note">
+      <p>All plans include a 14-day free trial. No credit card required to start.</p>
+      <p>Prices in USD. Cancel anytime.</p>
+    </footer>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('billingToggle');
+    const billingLabel = document.getElementById('billingLabel');
+    const priceValues = document.querySelectorAll('.price-value');
+    const notes = document.querySelectorAll('.plan-note');
+
+    function setBilling(mode) {
+      const annual = mode === 'annual';
+      toggle.classList.toggle('active', annual);
+      toggle.setAttribute('aria-pressed', String(annual));
+      billingLabel.textContent = annual ? 'Annual' : 'Monthly';
+
+      priceValues.forEach((price) => {
+        const target = annual ? price.dataset.annual : price.dataset.monthly;
+        if (target) {
+          price.textContent = target;
+        }
+      });
+
+      notes.forEach((note) => {
+        const target = annual ? note.dataset.annual : note.dataset.monthly;
+        if (target) {
+          note.textContent = target;
+        }
+      });
+    }
+
+    toggle.addEventListener('click', () => {
+      const nextMode = toggle.classList.contains('active') ? 'monthly' : 'annual';
+      setBilling(nextMode);
+    });
+
+    setBilling('monthly');
+  </script>
+</body>
+</html>
