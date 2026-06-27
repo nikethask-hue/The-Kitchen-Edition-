@@ -87,6 +87,87 @@
       line-height: 1.4;
     }
 
+    .auth-modal-overlay, .composer-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 3000;
+    }
+
+    .auth-modal-overlay.active, .composer-modal-overlay.active {
+      display: flex;
+    }
+
+    .auth-modal-card, .composer-modal-card {
+      width: min(100%, 420px);
+      background: #fff;
+      border-radius: 12px;
+      border: 0.5px solid rgba(17,17,17,0.16);
+      padding: 24px;
+      font-family: 'Inter', sans-serif;
+      color: #171716;
+    }
+
+    .auth-modal-card h2, .composer-modal-card h2 {
+      margin: 0 0 8px;
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .auth-tabs { display:flex; gap:8px; margin:16px 0; }
+    .auth-tab-btn, .composer-cancel-btn, .compose-submit-btn, .auth-action-btn, .google-btn {
+      border: 0.5px solid rgba(17,17,17,0.16);
+      background: #fff;
+      color: #171716;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .auth-tab-btn.active, .compose-submit-btn, .auth-action-btn {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+
+    .google-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .google-btn svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    .auth-form-grid, .composer-form-grid { display:grid; gap:12px; }
+    .auth-form-grid input, .composer-form-grid textarea, .composer-form-grid input {
+      width:100%; border:0.5px solid rgba(17,17,17,0.16); border-radius:10px; padding:10px 12px; font: inherit; background:#fff; color:#171716;
+    }
+
+    .auth-divider { text-align:center; color:#666; font-size:12px; margin:12px 0; }
+    .auth-link { font-size:12px; color:#2f5f82; cursor:pointer; }
+    .avatar-btn { display:inline-flex; align-items:center; gap:8px; border:none; background:transparent; cursor:pointer; color:inherit; font:inherit; }
+    .avatar-thumb { width:32px; height:32px; border-radius:50%; background:#e7e5dc; display:grid; place-items:center; font-size:12px; font-weight:600; overflow:hidden; }
+    .avatar-thumb img { width:100%; height:100%; object-fit:cover; }
+    .nav-dropdown { position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:0.5px solid rgba(17,17,17,0.16); border-radius:12px; min-width:220px; padding:12px; display:none; z-index:2000; }
+    .nav-dropdown.active { display:block; }
+    .nav-dropdown .row { font-size:12px; color:#666; } .nav-dropdown .name { font-weight:600; color:#171716; }
+    .nav-dropdown button, .nav-dropdown a { display:block; width:100%; text-align:left; padding:8px 0; font:inherit; background:none; border:none; color:inherit; cursor:pointer; }
+    .auth-note { font-size:12px; color:#666; margin-top:8px; }
+    .post-action-btn { margin-top:8px; }
+    .compose-char-count { font-size:11px; color:#666; text-align:right; }
+
     @media (prefers-color-scheme: dark) {
       .tke-plan-badge {
         color: #8ec6f2;
@@ -110,6 +191,11 @@
         border-color: rgba(143, 209, 91, 0.18);
         background: rgba(143, 209, 91, 0.12);
       }
+
+      .auth-modal-card, .composer-modal-card { background:#1a1a1a; color:#f2efe9; border-color:rgba(242,239,233,0.16); }
+      .auth-form-grid input, .composer-form-grid textarea, .composer-form-grid input { background:#1a1a1a; color:#f2efe9; border-color:rgba(242,239,233,0.16); }
+      .nav-dropdown { background:#1a1a1a; border-color:rgba(242,239,233,0.16); }
+      .avatar-thumb { background:#333; }
     }
   </style>
 </head>
@@ -137,7 +223,9 @@
         <li><a href="#pantry" class="nav-link" data-target="pantry">Smart Pantry</a></li>
         <li><a href="#favorites" class="nav-link" data-target="favorites">Favorites</a></li>
         <li><a href="#profile" class="nav-link" data-target="profile">Profile Settings</a></li>
+        <li><a href="community.html">Community</a></li>
         <li><a href="pricing.html">Pricing</a></li>
+        <li id="navAuthSlot" style="position:relative;"></li>
       </ul>
     </nav>
   </header>
@@ -510,7 +598,55 @@
     </div>
   </div>
 
-  <!-- Scripts -->
+  <div id="authModal" class="auth-modal-overlay" aria-hidden="true">
+    <div class="auth-modal-card" role="dialog" aria-modal="true">
+      <h2>Welcome to The Kitchen Edition</h2>
+      <p class="auth-note">Sign in to share your kitchen wins, save your profile, and join the community.</p>
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" data-mode="signin">Sign in</button>
+        <button class="auth-tab-btn" data-mode="signup">Sign up</button>
+      </div>
+      <div id="signinPanel" class="auth-form-grid">
+        <input id="signinEmail" type="email" placeholder="Email" />
+        <input id="signinPassword" type="password" placeholder="Password" />
+        <button id="signinBtn" class="auth-action-btn">Sign in</button>
+        <div class="auth-divider">or</div>
+        <button id="googleSignInBtn" class="google-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.78-.07-1.53-.2-2.25H12v4.26h5.39a4.61 4.61 0 0 1-2 3.03v2.5h3.24c1.9-1.75 2.97-4.33 2.97-7.54Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.43l-3.24-2.5c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.76-5.59-4.12H3.07v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.41 13.91A5.99 5.99 0 0 1 6.41 10.1V7.51H3.07a10 10 0 0 0 0 12.8l3.34-2.4Z"/><path fill="#EA4335" d="M12 6.04c1.47 0 2.79.5 3.83 1.49l2.87-2.87A9.96 9.96 0 0 0 12 2a10 10 0 0 0-8.93 5.51l3.34 2.59C7.2 7.8 9.4 6.04 12 6.04Z"/></svg>Continue with Google</button>
+        <div class="auth-link" id="switchToSignup">Don't have an account? Sign up</div>
+      </div>
+      <div id="signupPanel" class="auth-form-grid" style="display:none;">
+        <input id="signupName" type="text" placeholder="Display name" />
+        <input id="signupEmail" type="email" placeholder="Email" />
+        <input id="signupPassword" type="password" placeholder="Password" />
+        <button id="signupBtn" class="auth-action-btn">Create account</button>
+        <div class="auth-divider">or</div>
+        <button id="googleSignUpBtn" class="google-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.78-.07-1.53-.2-2.25H12v4.26h5.39a4.61 4.61 0 0 1-2 3.03v2.5h3.24c1.9-1.75 2.97-4.33 2.97-7.54Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.43l-3.24-2.5c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.76-5.59-4.12H3.07v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.41 13.91A5.99 5.99 0 0 1 6.41 10.1V7.51H3.07a10 10 0 0 0 0 12.8l3.34-2.4Z"/><path fill="#EA4335" d="M12 6.04c1.47 0 2.79.5 3.83 1.49l2.87-2.87A9.96 9.96 0 0 0 12 2a10 10 0 0 0-8.93 5.51l3.34 2.59C7.2 7.8 9.4 6.04 12 6.04Z"/></svg>Continue with Google</button>
+        <div class="auth-link" id="switchToSignin">Already have an account? Sign in</div>
+      </div>
+      <div id="authMessage" class="auth-note"></div>
+    </div>
+  </div>
+
+  <div id="postComposerModal" class="composer-modal-overlay" aria-hidden="true">
+    <div class="composer-modal-card" role="dialog" aria-modal="true">
+      <h2>Share your dish</h2>
+      <div class="composer-form-grid">
+        <div id="composerRecipeName" style="font-weight:600;"></div>
+        <textarea id="composerCaption" maxlength="280" placeholder="Tell everyone about it..."></textarea>
+        <div class="compose-char-count" id="composerCharCount">0 / 280</div>
+        <input type="file" id="composerImageInput" accept="image/*" />
+        <div class="composer-actions" style="display:flex; gap:8px; justify-content:flex-end;">
+          <button id="composerCancelBtn" class="composer-cancel-btn">Cancel</button>
+          <button id="composerSubmitBtn" class="compose-submit-btn">Post to The Kitchen Edition</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
   <script type="module" src="app.js"></script>
   <script>
     (function () {

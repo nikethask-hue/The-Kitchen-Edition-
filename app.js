@@ -2,6 +2,20 @@ import { MOCK_RECIPES } from './recipe-data.js';
 
 const SPOONACULAR_API_KEY = 'YOUR_SPOONACULAR_KEY_HERE';
 
+const firebaseConfig = {
+  apiKey: 'AIzaSyA5xjQkdJdV0x5S0q3gOm2WQ0C0S2u9W4I',
+  authDomain: 'the-kitchen-edition-7cb7a.firebaseapp.com',
+  projectId: 'the-kitchen-edition-7cb7a',
+  storageBucket: 'the-kitchen-edition-7cb7a.firebasestorage.app',
+  messagingSenderId: '825295658456',
+  appId: '1:825295658456:web:70d2af0ca0f751d0f2b06d8'
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
 // --- GLOBAL APPLICATION STATE ---
 let state = {
   profile: {
@@ -31,6 +45,12 @@ const API_RECIPE_CACHE = {};
 
 // Helper to check if setup wizard is completed
 let isSetupCompleted = false;
+let currentUser = null;
+let authReady = false;
+let pendingComposerRecipe = null;
+let pendingComposerRecipeId = null;
+let pendingComposerRecipeImage = null;
+let currentUserProfile = null;
 
 // --- STATE MANAGEMENT & LOCAL STORAGE ---
 const STATE_KEY = 'THE_KITCHEN_EDITION_STATE';
@@ -39,6 +59,160 @@ function saveState() {
   localStorage.setItem(STATE_KEY, JSON.stringify(state));
   showSyncState('Synced to Account');
   updateActiveProfileSummary();
+}
+
+async function ensureUserProfile(user) {
+  if (!user) return;
+  const ref = db.collection('users').doc(user.uid);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    await ref.set({
+      displayName: user.displayName || 'Kitchen Member',
+      email: user.email || '',
+      photoURL: user.photoURL || ''
+    });
+  }
+  currentUserProfile = snap.exists ? snap.data() : { displayName: user.displayName || 'Kitchen Member', email: user.email || '', photoURL: user.photoURL || '' };
+}
+
+function setAuthUI() {
+  const navSlot = document.getElementById('navAuthSlot');
+  if (!navSlot) return;
+  if (!currentUser) {
+    navSlot.innerHTML = '<a href="#" id="navSignInLink" style="font-size:12px; color:#2f5f82;">Sign in</a>';
+    const signInLink = document.getElementById('navSignInLink');
+    if (signInLink) signInLink.addEventListener('click', (e) => { e.preventDefault(); showAuthModal(); });
+    return;
+  }
+  const initials = (currentUser.displayName || currentUser.email || 'K').split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase();
+  navSlot.innerHTML = `
+    <div style="position:relative;">
+      <button class="avatar-btn" id="navAvatarBtn">
+        <span class="avatar-thumb">${currentUser.photoURL ? `<img src="${currentUser.photoURL}" alt="avatar">` : initials}</span>
+      </button>
+      <div class="nav-dropdown" id="navDropdown">
+        <div class="row name">${currentUser.displayName || 'Kitchen Member'}</div>
+        <div class="row" style="margin-bottom:8px;">${currentUser.email || ''}</div>
+        <a href="profile.html">Edit profile</a>
+        <button id="signOutBtn">Sign out</button>
+      </div>
+    </div>`;
+  const avatarBtn = document.getElementById('navAvatarBtn');
+  const dropdown = document.getElementById('navDropdown');
+  if (avatarBtn && dropdown) {
+    avatarBtn.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.toggle('active'); });
+  }
+  document.addEventListener('click', () => dropdown && dropdown.classList.remove('active'));
+  const signOutBtn = document.getElementById('signOutBtn');
+  if (signOutBtn) signOutBtn.addEventListener('click', async () => { await auth.signOut(); window.location.reload(); });
+}
+
+function showAuthModal() {
+  const modal = document.getElementById('authModal');
+  if (modal) {
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function hideAuthModal() {
+  const modal = document.getElementById('authModal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function handleEmailSignIn(email, password) {
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    hideAuthModal();
+  } catch (err) {
+    document.getElementById('authMessage').textContent = err.message || 'Sign in failed.';
+  }
+}
+
+async function handleEmailSignUp(name, email, password) {
+  try {
+    const result = await auth.createUserWithEmailAndPassword(email, password);
+    await result.user.updateProfile({ displayName: name });
+    await db.collection('users').doc(result.user.uid).set({ displayName: name, email, photoURL: '' });
+    hideAuthModal();
+  } catch (err) {
+    document.getElementById('authMessage').textContent = err.message || 'Sign up failed.';
+  }
+}
+
+async function handleGoogleSignIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+    hideAuthModal();
+  } catch (err) {
+    document.getElementById('authMessage').textContent = err.message || 'Google sign in failed.';
+  }
+}
+
+function showComposerModal(recipe) {
+  if (!currentUser) { showAuthModal(); return; }
+  pendingComposerRecipe = recipe;
+  pendingComposerRecipeId = recipe.id;
+  pendingComposerRecipeImage = recipe.image;
+  const modal = document.getElementById('postComposerModal');
+  const recipeName = document.getElementById('composerRecipeName');
+  const caption = document.getElementById('composerCaption');
+  const count = document.getElementById('composerCharCount');
+  if (recipeName) recipeName.textContent = recipe.title;
+  if (caption) caption.value = '';
+  if (count) count.textContent = '0 / 280';
+  if (modal) {
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+async function submitCommunityPost() {
+  const caption = document.getElementById('composerCaption').value.trim();
+  const imageFile = document.getElementById('composerImageInput').files[0];
+  const submitBtn = document.getElementById('composerSubmitBtn');
+  if (!pendingComposerRecipe || !currentUser) return;
+  if (submitBtn) submitBtn.textContent = 'Posting...';
+  try {
+    let userPhoto = '';
+    const profileSnap = await db.collection('users').doc(currentUser.uid).get();
+    const profileData = profileSnap.exists ? profileSnap.data() : {};
+    if (imageFile) {
+      const path = `community_posts/${currentUser.uid}/${Date.now()}_${imageFile.name}`;
+      const snap = await storage.ref(path).put(imageFile);
+      userPhoto = await snap.ref.getDownloadURL();
+    }
+    await db.collection('community_posts').add({
+      userId: currentUser.uid,
+      displayName: profileData.displayName || currentUser.displayName || 'Kitchen Member',
+      photoURL: profileData.photoURL || currentUser.photoURL || '',
+      recipeName: pendingComposerRecipe.title,
+      recipeId: pendingComposerRecipe.id,
+      recipeImage: pendingComposerRecipe.image,
+      userCaption: caption,
+      userPhoto,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      likes: 0
+    });
+    hideComposerModal();
+    showToast('Post shared with the community');
+  } catch (err) {
+    showToast('Unable to share post right now', 'error');
+  } finally {
+    if (submitBtn) submitBtn.textContent = 'Post to The Kitchen Edition';
+  }
+}
+
+function hideComposerModal() {
+  const modal = document.getElementById('postComposerModal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
 }
 
 function loadState() {
@@ -691,6 +865,7 @@ function createRecipeCard(recipe, compact = false) {
       ${ingredientMatchHtml}
       <div class="recipe-card-footer">
         <button class="btn-secondary view-details-btn" data-id="${recipe.id}">View Recipe</button>
+        <button class="btn-secondary post-action-btn" data-action="composer" data-id="${recipe.id}">📢 I made this!</button>
         <button class="bookmark-btn ${isBookmarked ? 'active' : ''}" data-id="${recipe.id}" aria-label="Bookmark recipe">
           ${isBookmarked ? '★' : '☆'}
         </button>
@@ -701,11 +876,16 @@ function createRecipeCard(recipe, compact = false) {
   // Attach card event listeners
   const titleEl = card.querySelector('.recipe-card-title');
   const detailsBtn = card.querySelector('.view-details-btn');
+  const composerBtn = card.querySelector('.post-action-btn');
   const bookmarkBtn = card.querySelector('.bookmark-btn');
 
   const openModal = () => openRecipeDetailModal(recipe.id);
   titleEl.addEventListener('click', openModal);
   detailsBtn.addEventListener('click', openModal);
+
+  if (composerBtn) {
+    composerBtn.addEventListener('click', () => showComposerModal(recipe));
+  }
 
   bookmarkBtn.addEventListener('click', () => {
     toggleFavorite(recipe.id);
@@ -1748,7 +1928,64 @@ async function renderPrepPage() {
 function init() {
   loadState();
   updateActiveProfileSummary();
+  auth.onAuthStateChanged(async (user) => {
+    currentUser = user;
+    authReady = true;
+    if (user) {
+      await ensureUserProfile(user);
+    } else {
+      currentUserProfile = null;
+    }
+    setAuthUI();
+    if (user && window.location.pathname.includes('community.html')) {
+      window.location.reload();
+    }
+  });
   handleRoute();
+  const authModal = document.getElementById('authModal');
+  if (authModal) {
+    authModal.addEventListener('click', (e) => {
+      if (e.target === authModal) hideAuthModal();
+    });
+  }
+  const composerModal = document.getElementById('postComposerModal');
+  if (composerModal) {
+    composerModal.addEventListener('click', (e) => {
+      if (e.target === composerModal) hideComposerModal();
+    });
+  }
+  document.getElementById('signinBtn')?.addEventListener('click', () => {
+    handleEmailSignIn(document.getElementById('signinEmail').value, document.getElementById('signinPassword').value);
+  });
+  document.getElementById('signupBtn')?.addEventListener('click', () => {
+    handleEmailSignUp(document.getElementById('signupName').value, document.getElementById('signupEmail').value, document.getElementById('signupPassword').value);
+  });
+  document.getElementById('googleSignInBtn')?.addEventListener('click', handleGoogleSignIn);
+  document.getElementById('googleSignUpBtn')?.addEventListener('click', handleGoogleSignIn);
+  document.getElementById('switchToSignup')?.addEventListener('click', () => {
+    document.getElementById('signinPanel').style.display = 'none';
+    document.getElementById('signupPanel').style.display = 'grid';
+    document.querySelectorAll('.auth-tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === 'signup'));
+  });
+  document.getElementById('switchToSignin')?.addEventListener('click', () => {
+    document.getElementById('signupPanel').style.display = 'none';
+    document.getElementById('signinPanel').style.display = 'grid';
+    document.querySelectorAll('.auth-tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === 'signin'));
+  });
+  document.querySelectorAll('.auth-tab-btn').forEach(btn => btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    document.querySelectorAll('.auth-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('signinPanel').style.display = mode === 'signin' ? 'grid' : 'none';
+    document.getElementById('signupPanel').style.display = mode === 'signup' ? 'grid' : 'none';
+  }));
+  document.getElementById('composerCaption')?.addEventListener('input', (e) => {
+    document.getElementById('composerCharCount').textContent = `${e.target.value.length} / 280`;
+  });
+  document.getElementById('composerCancelBtn')?.addEventListener('click', hideComposerModal);
+  document.getElementById('composerSubmitBtn')?.addEventListener('click', submitCommunityPost);
+  if (!currentUser) {
+    showAuthModal();
+  }
 }
 
 window.addEventListener('DOMContentLoaded', init);
